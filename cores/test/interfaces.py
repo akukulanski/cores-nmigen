@@ -367,3 +367,105 @@ class SnifferDriverBurps(SnifferDriver):
             yield RisingEdge(self.clk)
         data = yield SnifferDriver._recv(self)
         return data
+
+class AxiLiteDriver(BusDriver):
+    _signals =['awaddr', 'awvalid', 'awready',
+               'wdata', 'wstrb', 'wvalid', 'wready',
+               'bresp', 'bvalid', 'bready',
+               'araddr', 'arvalid', 'arready',
+               'rdata', 'rresp', 'rvalid', 'rready',]
+
+    def __init__(self, entity, name, clock):
+        BusDriver.__init__(self, entity, name, clock)
+        self.clk = clock
+        self.registers = {}
+        self.transactions = []
+
+    def aw_accepted(self):
+        return self.bus.awvalid.value.integer == 1 and self.bus.awready.value.integer == 1
+
+    def w_accepted(self):
+        return self.bus.wvalid.value.integer == 1 and self.bus.wready.value.integer == 1
+
+    def b_accepted(self):
+        return self.bus.bvalid.value.integer == 1 and self.bus.bready.value.integer == 1
+
+    def ar_accepted(self):
+        return self.bus.arvalid.value.integer == 1 and self.bus.arready.value.integer == 1
+    
+    def r_accepted(self):
+        return self.bus.rvalid.value.integer == 1 and self.bus.rready.value.integer == 1
+
+
+    @cocotb.coroutine
+    def write_reg(self, addr, value):
+        self.bus.awaddr <= addr
+        self.bus.awvalid <= 1
+        yield RisingEdge(self.clk)
+        while not self.aw_accepted():
+            yield RisingEdge(self.clk)
+        self.bus.awvalid <= 0
+        self.bus.wdata <= value
+        self.bus.wvalid <= 1
+        yield RisingEdge(self.clk)
+        while not self.w_accepted():
+            yield RisingEdge(self.clk)
+        self.bus.wvalid <= 0
+        self.bus.bready <= 1
+        while not self.b_accepted():
+            yield RisingEdge(self.clk)
+        self.bus.bready <= 0
+        yield RisingEdge(self.clk)
+
+    @cocotb.coroutine
+    def read_reg(self, addr):
+        self.bus.araddr <= addr
+        self.bus.arvalid <= 1
+        yield RisingEdge(self.clk)
+        while not self.ar_accepted():
+            yield RisingEdge(self.clk)
+        self.bus.arvalid <= 0
+        self.bus.rready <= 1
+        yield RisingEdge(self.clk)
+        while not self.r_accepted():
+            yield RisingEdge(self.clk)
+        self.bus.rready <= 0
+        rd = self.rdata
+        yield RisingEdge(self.clk)
+        return rd
+
+    @cocotb.coroutine
+    def monitor(self):
+        while True:
+            if self.aw_accepted():
+                addr_w = self.awaddr
+            if self.w_accepted():
+                data_w = self.wdata
+            if self.ar_accepted():
+                addr_r = self.araddr
+            if self.r_accepted():
+                data_r = self.rdata
+            if addr_w is not None and data_w is not None:
+                self.transactions.append(('wr', addr_w, data_w))
+                self.registers[addr_w] = data_w
+                addr_w, data_w = None, None
+            if addr_r is not None and data_r is not None:
+                self.transactions.append(('rd', addr_r, data_r))
+                addr_r, data_r = None, None
+            yield RisingEdge(self.clk)
+
+    @property
+    def awaddr(self):
+        return self.bus.awaddr.value.integer
+    
+    @property
+    def wdata(self):
+        return self.bus.wdata.value.integer
+
+    @property
+    def araddr(self):
+        return self.bus.araddr.value.integer
+
+    @property
+    def rdata(self):
+        return self.bus.rdata.value.integer

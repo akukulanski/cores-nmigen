@@ -66,95 +66,58 @@ class Stream(MetaStream):
         self.DATA_FIELDS = [('data', width)]
         MetaStream.__init__(self, width, direction, name=name, fields=fields)
 
-class PredictorStream(MetaStream):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('data', width), ('previous', width)]
-        MetaStream.__init__(self, width, direction, name=name, fields=fields)
-
-class PackerShifterStream(MetaStream):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('data', width), ('mask', width), ('shift', ceil(log2(width+1)))]
-        MetaStream.__init__(self, width, direction, name=name, fields=fields)
-
-class HuffmanStream(MetaStream):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('symbol', width),
-                            ('length', ceil(log2(width+1))), 
-                            ('mask', width)]
-        MetaStream.__init__(self, width, direction, name=name, fields=fields)
-
-class AppenderStream(MetaStream):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('symbol_0', width),
-                            ('length_0', ceil(log2(width+1))),
-                            ('mask_0', width),
-                            ('symbol_1', width),
-                            ('length_1', ceil(log2(width+1))),
-                            ('mask_1', width)]
-        MetaStream.__init__(self, width, direction, name=name, fields=fields)
-
-class HSS(Record):
-    DATA_FIELDS = []
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('data', width)]
-        if direction == 'sink':
-            layout = [('valid', 1, Direction.FANIN),
-                      ('trigger', 1, Direction.FANOUT),
-                      ('available', 1, Direction.FANIN),
-                      ('img_coming', 1, Direction.FANIN)]
-            for d in self.DATA_FIELDS:
-                layout.append((d[0], d[1], Direction.FANIN))
-        elif direction == 'source':
-            layout = [('valid', 1, Direction.FANOUT),
-                      ('trigger', 1, Direction.FANIN),
-                      ('available', 1, Direction.FANOUT),
-                      ('img_coming', 1, Direction.FANOUT)]
-            for d in self.DATA_FIELDS:
-                layout.append((d[0], d[1], Direction.FANOUT))
-        else:
-            layout = [('valid', 1),
-                      ('trigger', 1),
-                      ('available', 1),
-                      ('img_coming', 1)]
-            for d in self.DATA_FIELDS:
-                layout.append((d[0], d[1]))
+class AxiLite(Record):
+    def __init__(self, addr_w, data_w, mode=None, name=None, fields=None):
+        # www.gstitt.ece.ufl.edu/courses/fall15/eel4720_5721/labs/refs/AXI4_specification.pdf#page=122
+        assert mode in ('slave',) #('slave', 'master')
+        assert data_w in (32, 64)
+        self.addr_w = addr_w
+        self.data_w = data_w
+        if mode == 'slave':
+            layout = [('awaddr', addr_w, Direction.FANIN),
+                      ('awvalid', 1, Direction.FANIN),
+                      ('awready', 1, Direction.FANOUT),
+                      ('wdata', data_w, Direction.FANIN),
+                      ('wstrb', data_w//8, Direction.FANIN),
+                      ('wvalid', 1, Direction.FANIN),
+                      ('wready', 1, Direction.FANOUT),
+                      ('bresp', 2, Direction.FANOUT),
+                      ('bvalid', 1, Direction.FANOUT),
+                      ('bready', 1, Direction.FANIN),
+                      ('araddr', addr_w, Direction.FANIN),
+                      ('arvalid', 1, Direction.FANIN),
+                      ('arready', 1, Direction.FANOUT),
+                      ('rdata', data_w, Direction.FANOUT),
+                      ('rresp', 2, Direction.FANOUT),
+                      ('rvalid', 1, Direction.FANOUT),
+                      ('rready', 1, Direction.FANIN),]
+        elif mode == 'master':
+            pass
         Record.__init__(self, layout, name=name, fields=fields)
 
-class SnifferStream(Record):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = []
-        if direction == 'sink':
-            layout = [('data', width, Direction.FANIN),
-                      ('valid', 1, Direction.FANIN),
-                      ('receiving', 1, Direction.FANIN)]
-        elif direction == 'source':
-            layout = [('data', width, Direction.FANOUT),
-                      ('valid', 1, Direction.FANOUT),
-                      ('receiving', 1, Direction.FANOUT)]
-        else:
-            layout = [('data', width),
-                      ('valid', 1),
-                      ('receiving', 1)]
-        Record.__init__(self, layout, name=name, fields=fields)
-        
-class RoiConfig(Record):
-    def __init__(self, direction=None, name=None, fields=None):
-        if direction == 'sink':
-            layout = [('x0', ceil(log2(80)), Direction.FANIN),
-                      ('y0', ceil(log2(5120)), Direction.FANIN),
-                      ('x1', ceil(log2(80)), Direction.FANIN),
-                      ('y1', ceil(log2(5120)), Direction.FANIN),
-                       ('row_length', ceil(log2(81)), Direction.FANIN)]
-        elif direction == 'source':
-            layout = [('x0', ceil(log2(80)), Direction.FANOUT),
-                      ('y0', ceil(log2(5120)), Direction.FANOUT),
-                      ('x1', ceil(log2(80)), Direction.FANOUT),
-                      ('y1', ceil(log2(5120)), Direction.FANOUT),
-                      ('row_length', ceil(log2(81)), Direction.FANOUT)]
-        else:
-            layout = [('x0', ceil(log2(80))),
-                      ('y0', ceil(log2(5120))),
-                      ('x1', ceil(log2(80))),
-                      ('y1', ceil(log2(5120))),
-                      ('row_length', ceil(log2(81)))]
+    def aw_accepted(self):
+        return (self.awvalid == 1) & (self.awready == 1)
+
+    def w_accepted(self):
+        return (self.wvalid == 1) & (self.wready == 1)
+
+    def b_accepted(self):
+        return (self.bvalid == 1) & (self.bready == 1)
+
+    def ar_accepted(self):
+        return (self.arvalid == 1) & (self.arready == 1)    
+
+    def r_accepted(self):
+        return (self.rvalid == 1) & (self.rready == 1)    
+
+class RegistersInterface(Record):
+    _dir = {'ro': Direction.FANIN,
+            'rw': Direction.FANOUT}
+
+    def __init__(self, addr_w, data_w, registers, mode=None, name=None, fields=None):
+        assert data_w in (32, 64)
+        self.addr_w = addr_w
+        self.data_w = data_w
+        self.registers = registers
+        layout = [(reg_name, data_w, self._dir[reg_dir]) for reg_name, reg_dir, reg_addr in self.registers]
         Record.__init__(self, layout, name=name, fields=fields)

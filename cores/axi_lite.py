@@ -10,19 +10,21 @@ class AxiLiteDevice(Elaboratable):
         self.axi_lite = AxiLite(self.addr_w, self.data_w, 'slave', name='s_axi')
         self.registers = RegistersInterface(addr_w, data_w, registers)
 
-    def write_reg(self, addr, value, m):
-        for r in self._regs:
-            reg_name, reg_dir, reg_addr = r
-            if reg_dir == 'rw':
-                with m.If(addr == reg_addr):
-                    return getattr(self.registers, reg_name).eq(value)
-
     def elaborate(self, platform):
         m = Module()
         sync = m.d.sync
         comb = m.d.comb
 
         # Registers
+
+        regs = {}
+        for _, r_dir, addr, r_fields in self._regs:
+            regs[addr] = Signal(self.data_w)
+            for name, size, offset in r_fields:
+                if r_dir == 'rw':
+                    comb += getattr(self.registers, name).eq(regs[addr][offset:offset+size])
+                else:
+                    comb += regs[addr][offset:offset+size].eq(getattr(self.registers, name))
 
         we = Signal()
         wr_addr = Signal(self.addr_w)
@@ -34,19 +36,19 @@ class AxiLiteDevice(Elaboratable):
         with m.If(self.axi_lite.w_accepted()):
             sync += wr_data.eq(self.axi_lite.wdata)
         
-        for reg_name, reg_dir, reg_addr in self._regs:
-            if reg_dir == 'rw':
-                with m.If((wr_addr == reg_addr) & (we == 1)):
-                    sync += getattr(self.registers, reg_name).eq(wr_data)
+        for _, r_dir, r_addr, r_fields in self._regs:
+            if r_dir == 'rw':
+                with m.If((wr_addr == r_addr) & (we == 1)):
+                    sync += regs[r_addr].eq(wr_data)
 
-        for reg_name, reg_dir, reg_addr in self._regs:
-            with m.If(self.axi_lite.ar_accepted() & (self.axi_lite.araddr == reg_addr)):
-                sync += self.axi_lite.rdata.eq(getattr(self.registers, reg_name))
+        for _, r_dir, r_addr, r_fields in self._regs:
+            with m.If(self.axi_lite.ar_accepted() & (self.axi_lite.araddr == r_addr)):
+                sync += self.axi_lite.rdata.eq(regs[r_addr])
 
         # Axi Lite Slave Interface
         
-        comb += self.axi_lite.bresp.eq(0)
         comb += self.axi_lite.rresp.eq(0)
+        comb += self.axi_lite.bresp.eq(0)
         
         with m.FSM() as fsm_rd:
             with m.State("IDLE"):

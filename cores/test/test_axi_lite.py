@@ -14,14 +14,26 @@ except:
 CLK_PERIOD_BASE = 100
 random.seed()
 
-regs_rw = [('reg_rw_1', 'rw', 0x00000000),
-           ('reg_rw_2', 'rw', 0x00000004),
-           ('reg_rw_3', 'rw', 0x00000008),
-           ]
-regs_ro = [('reg_ro_1', 'ro', 0x0000000C),
-           ('reg_ro_2', 'ro', 0x00000010),
-           ('reg_ro_3', 'ro', 0x00000014),]
+# name, dir, addr, internal_fields (size, offset)
+regs_rw = [('reg_rw_1', 'rw', 0x00000000, [('field_1', 32,  0),]),
+           ('reg_rw_2', 'rw', 0x00000004, [('field_2',  1,  0),
+                                           ('field_3', 15,  1),
+                                           ('field_4', 16, 16),]),
+           ('reg_rw_3', 'rw', 0x00000008, [('field_5', 32,  0),]),
+          ]
+regs_ro = [('reg_ro_1', 'ro', 0x0000000C, [('field_10', 32,  0),]),
+           ('reg_ro_2', 'ro', 0x00000010, [('field_20',  1,  0),
+                                           ('field_30', 15,  1),
+                                           ('field_40', 16, 16),]),
+           ('reg_ro_3', 'ro', 0x00000014, [('field_50', 32,  0),]),
+          ]
 regs = regs_rw + regs_ro
+
+
+get_mask = lambda size, offset: (2**size-1) << offset
+mask = lambda value, size, offset: (value & (2**size - 1)) << offset
+unmask = lambda value, size, offset: (value >> offset) & (2**size - 1)
+
 
 @cocotb.coroutine
 def init_test(dut):
@@ -34,8 +46,10 @@ def init_test(dut):
     dut.s_axi__araddr <= 0
     dut.s_axi__arvalid <= 0
     dut.s_axi__rready <= 0
-    for reg_name, reg_dir, reg_addr in regs_ro:
-        setattr(dut, reg_name, 0)
+    for r_name, r_dir, r_addr, r_fields in regs:
+        if r_dir == 'ro':
+            for f_name, f_size, f_offset in r_fields:
+                setattr(dut, f_name, 0)
     dut.rst <= 1
     cocotb.fork(Clock(dut.clk, 10, 'ns').start())
     yield RisingEdge(dut.clk)
@@ -50,13 +64,18 @@ def check_rw_regs(dut):
 
     yield init_test(dut)
 
-    for (reg_name, reg_dir, reg_addr), value in zip(regs_rw, data):
-        yield axi_lite.write_reg(reg_addr, value)
+    for (r_name, r_dir, r_addr, r_fields), value in zip(regs_rw, data):
+        yield axi_lite.write_reg(r_addr, value)
 
-    for (reg_name, reg_dir, reg_addr), value in zip(regs_rw, data):
-        assert getattr(dut, reg_name).value.integer == value, f'{hex(getattr(dut, reg_name).value.integer)} == {hex(value)}'
-        rd = yield axi_lite.read_reg(reg_addr)
-        assert rd == value, f'{hex(rd)} == {hex(value)}'
+    for (r_name, r_dir, r_addr, r_fields), r_value in zip(regs_rw, data):
+
+        rd = yield axi_lite.read_reg(r_addr)
+        assert rd == r_value, f'{hex(rd)} == {hex(r_value)}'
+
+        for f_name, f_size, f_offset in r_fields:
+            f_value = getattr(dut, f_name).value.integer
+            expected = unmask(r_value, f_size, f_offset)
+            assert f_value == expected, f'{hex(f_value)} == {hex(expected)}'
 
 
 @cocotb.coroutine
@@ -67,13 +86,17 @@ def check_ro_regs(dut):
 
     yield init_test(dut)
 
-    for (reg_name, reg_dir, reg_addr), value in zip(regs_ro, data):
-        setattr(dut, reg_name, value)
-        yield RisingEdge(dut.clk)
+    for (r_name, r_dir, r_addr, r_fields), r_value in zip(regs_ro, data):
+        for f_name, f_size, f_offset in r_fields:
+            setattr(dut, f_name, unmask(r_value, f_size, f_offset))
+    
+    yield RisingEdge(dut.clk)
 
-    for (reg_name, reg_dir, reg_addr), value in zip(regs_ro, data):
-        rd = yield axi_lite.read_reg(reg_addr)
-        assert rd == value, f'{hex(rd)} == {hex(value)}'
+    for (r_name, r_dir, r_addr, r_fields), r_value in zip(regs_ro, data):
+        
+        rd = yield axi_lite.read_reg(r_addr)
+        assert rd == r_value, f'{hex(rd)} == {hex(r_value)}'
+
 
 tf_test_rw = TF(check_rw_regs)
 tf_test_rw.generate_tests()

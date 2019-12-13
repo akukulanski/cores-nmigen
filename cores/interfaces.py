@@ -109,6 +109,7 @@ class AxiLite(Record):
     def r_accepted(self):
         return (self.rvalid == 1) & (self.rready == 1)    
 
+
 class RegistersInterface(Record):
     _dir = {'ro': Direction.FANIN,
             'rw': Direction.FANOUT}
@@ -118,5 +119,7 @@ class RegistersInterface(Record):
         self.addr_w = addr_w
         self.data_w = data_w
         self.registers = registers
-        layout = [(reg_name, data_w, self._dir[reg_dir]) for reg_name, reg_dir, reg_addr in self.registers]
+        layout = []
+        for r_name, r_dir, r_addr, r_fields in self.registers:
+            layout += [(f_name, f_size, self._dir[r_dir]) for f_name, f_size, f_offset in r_fields]
         Record.__init__(self, layout, name=name, fields=fields)

@@ -34,6 +34,8 @@ def init_test(dut):
     dut.s_axi__araddr <= 0
     dut.s_axi__arvalid <= 0
     dut.s_axi__rready <= 0
+    for reg_name, reg_dir, reg_addr in regs_ro:
+        setattr(dut, reg_name, 0)
     dut.rst <= 1
     cocotb.fork(Clock(dut.clk, 10, 'ns').start())
     yield RisingEdge(dut.clk)
@@ -46,29 +48,38 @@ def check_rw_regs(dut):
     axi_lite = AxiLiteDriver(dut, 's_axi_', dut.clk)
     data = [random.randint(0,2**32-1) for _ in range(len(regs_rw))]
 
-    dut._log.info('> Init')
     yield init_test(dut)
 
-    dut._log.info('> Write')
-    for reg, value in zip(regs_rw, data):
-        reg_name, reg_dir, reg_addr = reg
-        #dut._log.info(f'reg_name, reg_dir, reg_addr = {reg_name}, {reg_dir}, {reg_addr}')
+    for (reg_name, reg_dir, reg_addr), value in zip(regs_rw, data):
         yield axi_lite.write_reg(reg_addr, value)
 
-    dut._log.info('> Read')
-    for reg, value in zip(regs_rw, data):
-        reg_name, reg_dir, reg_addr = reg
-        #dut._log.info(f'reg_name, reg_dir, reg_addr = {reg_name}, {reg_dir}, {reg_addr}')
+    for (reg_name, reg_dir, reg_addr), value in zip(regs_rw, data):
         assert getattr(dut, reg_name).value.integer == value, f'{hex(getattr(dut, reg_name).value.integer)} == {hex(value)}'
         rd = yield axi_lite.read_reg(reg_addr)
         assert rd == value, f'{hex(rd)} == {hex(value)}'
 
 
+@cocotb.coroutine
+def check_ro_regs(dut):
+
+    axi_lite = AxiLiteDriver(dut, 's_axi_', dut.clk)
+    data = [random.randint(0,2**32-1) for _ in range(len(regs_ro))]
+
+    yield init_test(dut)
+
+    for (reg_name, reg_dir, reg_addr), value in zip(regs_ro, data):
+        setattr(dut, reg_name, value)
+        yield RisingEdge(dut.clk)
+
+    for (reg_name, reg_dir, reg_addr), value in zip(regs_ro, data):
+        rd = yield axi_lite.read_reg(reg_addr)
+        assert rd == value, f'{hex(rd)} == {hex(value)}'
+
 tf_test_rw = TF(check_rw_regs)
 tf_test_rw.generate_tests()
 
-# tf_test_ro = TF(check_ro_regs)
-# tf_test_ro.generate_tests()
+tf_test_ro = TF(check_ro_regs)
+tf_test_ro.generate_tests()
 
 
 def test_axi_lite_device():

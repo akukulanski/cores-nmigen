@@ -1,13 +1,15 @@
 from nmigen import *
-from nmigen.lib.fifo import SyncFIFOBuffered, SyncFIFO
+import nmigen.lib.fifo as fifos
 from .interfaces import Stream
 
 class AxiStreamFifo(Elaboratable):
-    def __init__(self, stream_type, width, depth, force_sync_rd=False):
+
+    def __init__(self, stream_type, width, depth, fifo=fifos.SyncFIFOBuffered):
         self.input = stream_type(width, 'sink', name='input')
         self.output = stream_type(width, 'source', name='output')
         self.depth = depth
-        self.fifo = SyncFIFOBuffered if force_sync_rd else SyncFIFO
+        self.fifo = fifo
+
     def elaborate(self, platform):
         m = Module()
         comb = m.d.comb

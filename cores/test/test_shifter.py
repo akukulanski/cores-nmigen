@@ -59,5 +59,4 @@ def test_main(width):
     shifter = PipelinedBarrelShifter(width)
     ports = [shifter.input[f] for f in shifter.input.fields]   
     ports += [shifter.output[f] for f in shifter.output.fields]
-    run(shifter, 'cores.test.test_shifter', ports=ports)
-    # run(shifter, 'cores.test.test_shifter', ports=ports, vcd_file='output.vcd')
+    run(shifter, 'cores.test.test_shifter', ports=ports, vcd_file=None)

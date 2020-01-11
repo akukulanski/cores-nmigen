@@ -29,6 +29,13 @@ class MetaStream(Record):
     def accepted(self):
         return (self.valid == 1) & (self.ready == 1)
 
+
+class Stream(MetaStream):
+    def __init__(self, width, direction=None, name=None, fields=None):
+        self.DATA_FIELDS = [('data', width)]
+        MetaStream.__init__(self, width, direction, name=name, fields=fields)
+
+
 class AxiStream(Record):
     def __init__(self, width, direction=None, name=None, fields=None):
         self.width = width
@@ -51,20 +58,12 @@ class AxiStream(Record):
     def accepted(self):
         return (self.TVALID == 1) & (self.TREADY == 1)
 
-class SymbolStream(MetaStream):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('data', width), ('length', ceil(log2(width+1)))]
-        MetaStream.__init__(self, width, direction, name=name, fields=fields)
 
 class ShifterStream(MetaStream):
     def __init__(self, width, direction=None, name=None, fields=None):
         self.DATA_FIELDS = [('data', width), ('shift', ceil(log2(width+1)))]
         MetaStream.__init__(self, width, direction, name=name, fields=fields)
 
-class Stream(MetaStream):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('data', width)]
-        MetaStream.__init__(self, width, direction, name=name, fields=fields)
 
 class AxiLite(Record):
     def __init__(self, addr_w, data_w, mode=None, name=None, fields=None):

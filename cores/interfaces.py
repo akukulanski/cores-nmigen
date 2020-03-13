@@ -133,6 +133,7 @@ class RegistersInterface(Record):
 
     def __init__(self, addr_w, data_w, registers, mode=None, name=None, fields=None):
         assert data_w in (32, 64)
+        assert max([reg[2] for reg in registers]) < 2**addr_w, 'Register with address 0x{:x} not reachable. Increase address width!'.format(max([reg[2] for reg in registers]))
         self.addr_w = addr_w
         self.data_w = data_w
         self.registers = registers

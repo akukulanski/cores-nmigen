@@ -73,26 +73,43 @@ class AxiLite(Record):
         self.addr_w = addr_w
         self.data_w = data_w
         if mode == 'slave':
-            layout = [('awaddr', addr_w, Direction.FANIN),
-                      ('awvalid', 1, Direction.FANIN),
-                      ('awready', 1, Direction.FANOUT),
-                      ('wdata', data_w, Direction.FANIN),
-                      ('wstrb', data_w//8, Direction.FANIN),
-                      ('wvalid', 1, Direction.FANIN),
-                      ('wready', 1, Direction.FANOUT),
-                      ('bresp', 2, Direction.FANOUT),
-                      ('bvalid', 1, Direction.FANOUT),
-                      ('bready', 1, Direction.FANIN),
-                      ('araddr', addr_w, Direction.FANIN),
-                      ('arvalid', 1, Direction.FANIN),
-                      ('arready', 1, Direction.FANOUT),
-                      ('rdata', data_w, Direction.FANOUT),
-                      ('rresp', 2, Direction.FANOUT),
-                      ('rvalid', 1, Direction.FANOUT),
-                      ('rready', 1, Direction.FANIN),]
+            layout = [('AWADDR', addr_w, Direction.FANIN),
+                      ('AWVALID', 1, Direction.FANIN),
+                      ('AWREADY', 1, Direction.FANOUT),
+                      ('WDATA', data_w, Direction.FANIN),
+                      ('WSTRB', data_w//8, Direction.FANIN),
+                      ('WVALID', 1, Direction.FANIN),
+                      ('WREADY', 1, Direction.FANOUT),
+                      ('BRESP', 2, Direction.FANOUT),
+                      ('BVALID', 1, Direction.FANOUT),
+                      ('BREADY', 1, Direction.FANIN),
+                      ('ARADDR', addr_w, Direction.FANIN),
+                      ('ARVALID', 1, Direction.FANIN),
+                      ('ARREADY', 1, Direction.FANOUT),
+                      ('RDATA', data_w, Direction.FANOUT),
+                      ('RRESP', 2, Direction.FANOUT),
+                      ('RVALID', 1, Direction.FANOUT),
+                      ('RREADY', 1, Direction.FANIN),]
         elif mode == 'master':
             pass
         Record.__init__(self, layout, name=name, fields=fields)
+        self.awaddr = self.AWADDR
+        self.awvalid = self.AWVALID
+        self.awready = self.AWREADY
+        self.wdata = self.WDATA
+        self.wstrb = self.WSTRB
+        self.wvalid = self.WVALID
+        self.wready = self.WREADY
+        self.bresp = self.BRESP
+        self.bvalid = self.BVALID
+        self.bready = self.BREADY
+        self.araddr = self.ARADDR
+        self.arvalid = self.ARVALID
+        self.arready = self.ARREADY
+        self.rdata = self.RDATA
+        self.rresp = self.RRESP
+        self.rvalid = self.RVALID
+        self.rready = self.RREADY
 
     def aw_accepted(self):
         return (self.awvalid == 1) & (self.awready == 1)

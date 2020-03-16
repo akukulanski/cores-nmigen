@@ -37,15 +37,15 @@ unmask = lambda value, size, offset: (value >> offset) & (2**size - 1)
 
 @cocotb.coroutine
 def init_test(dut):
-    dut.s_axi__awaddr <= 0
-    dut.s_axi__awvalid <= 0
-    dut.s_axi__wdata <= 0
-    dut.s_axi__wstrb <= 0
-    dut.s_axi__wvalid <= 0
-    dut.s_axi__bready <= 0
-    dut.s_axi__araddr <= 0
-    dut.s_axi__arvalid <= 0
-    dut.s_axi__rready <= 0
+    dut.s_axi__AWADDR <= 0
+    dut.s_axi__AWVALID <= 0
+    dut.s_axi__WDATA <= 0
+    dut.s_axi__WSTRB <= 0
+    dut.s_axi__WVALID <= 0
+    dut.s_axi__BREADY <= 0
+    dut.s_axi__ARADDR <= 0
+    dut.s_axi__ARVALID <= 0
+    dut.s_axi__RREADY <= 0
     for r_name, r_dir, r_addr, r_fields in regs:
         if r_dir == 'ro':
             for f_name, f_size, f_offset in r_fields:

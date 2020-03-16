@@ -158,11 +158,11 @@ class AxiStreamDriverBurps(AxiStreamDriver):
 
 
 class AxiLiteDriver(BusDriver):
-    _signals =['awaddr', 'awvalid', 'awready',
-               'wdata', 'wstrb', 'wvalid', 'wready',
-               'bresp', 'bvalid', 'bready',
-               'araddr', 'arvalid', 'arready',
-               'rdata', 'rresp', 'rvalid', 'rready',]
+    _signals =['AWADDR', 'AWVALID', 'AWREADY',
+               'WDATA', 'WSTRB', 'WVALID', 'WREADY',
+               'BRESP', 'BVALID', 'BREADY',
+               'ARADDR', 'ARVALID', 'ARREADY',
+               'RDATA', 'RRESP', 'RVALID', 'RREADY',]
 
     def __init__(self, entity, name, clock):
         BusDriver.__init__(self, entity, name, clock)
@@ -171,54 +171,54 @@ class AxiLiteDriver(BusDriver):
         self.transactions = []
 
     def aw_accepted(self):
-        return self.bus.awvalid.value.integer == 1 and self.bus.awready.value.integer == 1
+        return self.bus.AWVALID.value.integer == 1 and self.bus.AWREADY.value.integer == 1
 
     def w_accepted(self):
-        return self.bus.wvalid.value.integer == 1 and self.bus.wready.value.integer == 1
+        return self.bus.WVALID.value.integer == 1 and self.bus.WREADY.value.integer == 1
 
     def b_accepted(self):
-        return self.bus.bvalid.value.integer == 1 and self.bus.bready.value.integer == 1
+        return self.bus.BVALID.value.integer == 1 and self.bus.BREADY.value.integer == 1
 
     def ar_accepted(self):
-        return self.bus.arvalid.value.integer == 1 and self.bus.arready.value.integer == 1
+        return self.bus.ARVALID.value.integer == 1 and self.bus.ARREADY.value.integer == 1
     
     def r_accepted(self):
-        return self.bus.rvalid.value.integer == 1 and self.bus.rready.value.integer == 1
+        return self.bus.RVALID.value.integer == 1 and self.bus.RREADY.value.integer == 1
 
 
     @cocotb.coroutine
     def write_reg(self, addr, value):
-        self.bus.awaddr <= addr
-        self.bus.awvalid <= 1
+        self.bus.AWADDR <= addr
+        self.bus.AWVALID <= 1
         yield RisingEdge(self.clk)
         while not self.aw_accepted():
             yield RisingEdge(self.clk)
-        self.bus.awvalid <= 0
-        self.bus.wdata <= value
-        self.bus.wvalid <= 1
+        self.bus.AWVALID <= 0
+        self.bus.WDATA <= value
+        self.bus.WVALID <= 1
         yield RisingEdge(self.clk)
         while not self.w_accepted():
             yield RisingEdge(self.clk)
-        self.bus.wvalid <= 0
-        self.bus.bready <= 1
+        self.bus.WVALID <= 0
+        self.bus.BREADY <= 1
         while not self.b_accepted():
             yield RisingEdge(self.clk)
-        self.bus.bready <= 0
+        self.bus.BREADY <= 0
         yield RisingEdge(self.clk)
 
     @cocotb.coroutine
     def read_reg(self, addr):
-        self.bus.araddr <= addr
-        self.bus.arvalid <= 1
+        self.bus.ARADDR <= addr
+        self.bus.ARVALID <= 1
         yield RisingEdge(self.clk)
         while not self.ar_accepted():
             yield RisingEdge(self.clk)
-        self.bus.arvalid <= 0
-        self.bus.rready <= 1
+        self.bus.ARVALID <= 0
+        self.bus.RREADY <= 1
         yield RisingEdge(self.clk)
         while not self.r_accepted():
             yield RisingEdge(self.clk)
-        self.bus.rready <= 0
+        self.bus.RREADY <= 0
         rd = self.rdata
         yield RisingEdge(self.clk)
         return rd
@@ -245,16 +245,16 @@ class AxiLiteDriver(BusDriver):
 
     @property
     def awaddr(self):
-        return self.bus.awaddr.value.integer
+        return self.bus.AWADDR.value.integer
     
     @property
     def wdata(self):
-        return self.bus.wdata.value.integer
+        return self.bus.WDATA.value.integer
 
     @property
     def araddr(self):
-        return self.bus.araddr.value.integer
+        return self.bus.ARADDR.value.integer
 
     @property
     def rdata(self):
-        return self.bus.rdata.value.integer
+        return self.bus.RDATA.value.integer

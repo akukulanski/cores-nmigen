@@ -140,6 +140,14 @@ class AxiStreamDriver(StreamDriver):
         data = self.bus.TDATA.value.integer
         return data
 
+    @cocotb.coroutine
+    def monitor(self):
+        while True:
+            if self.accepted():
+                data = self.read()
+                self.buffer.append(data)
+            yield RisingEdge(self.clk)
+
 class AxiStreamDriverBurps(AxiStreamDriver):
     @cocotb.coroutine
     def _send(self, *data):

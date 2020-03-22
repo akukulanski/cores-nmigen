@@ -39,7 +39,7 @@ def axi_stream_test(dut):
 
 
 def test_axi_stream():
-    fifo = AxiStreamFifo(AxiStream, random.randint(2, 20), random.randint(2, 10))
+    fifo = AxiStreamFifo(random.randint(2, 20), random.randint(2, 10))
     ports = [fifo.input[f] for f in fifo.input.fields]   
     ports += [fifo.output[f] for f in fifo.output.fields]
     os.environ['TESTCASE'] = 'axi_stream_test'

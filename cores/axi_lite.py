@@ -11,6 +11,11 @@ class AxiLiteDevice(Elaboratable):
         self.axi_lite = AxiLite(self.addr_w, self.data_w, 'slave', name='s_axi')
         self.registers = RegistersInterface(addr_w, data_w, registers)
 
+    def get_ports(self):
+        ports = [self.axi_lite[f] for f in self.axi_lite.fields]
+        ports += [self.registers[f] for f in self.registers.fields]
+        return ports
+
     def elaborate(self, platform):
         m = Module()
         sync = m.d[self.domain]

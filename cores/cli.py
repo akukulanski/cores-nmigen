@@ -15,7 +15,7 @@ def get_args():
 
 
 def main():
-
+    assert False, 'CLI not implemented!'
     args = get_args()
 
     core = WidthConverter(args.input_w, args.output_w)

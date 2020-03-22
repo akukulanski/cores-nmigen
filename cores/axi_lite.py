@@ -3,16 +3,17 @@ from .interfaces import AxiLite, RegistersInterface
 
 
 class AxiLiteDevice(Elaboratable):
-    def __init__(self, addr_w, data_w, registers):
+    def __init__(self, addr_w, data_w, registers, domain='sync'):
         self.addr_w = addr_w
         self.data_w = data_w
         self._regs = registers
+        self.domain = domain
         self.axi_lite = AxiLite(self.addr_w, self.data_w, 'slave', name='s_axi')
         self.registers = RegistersInterface(addr_w, data_w, registers)
 
     def elaborate(self, platform):
         m = Module()
-        sync = m.d.sync
+        sync = m.d[self.domain]
         comb = m.d.comb
 
         # Registers
@@ -50,7 +51,7 @@ class AxiLiteDevice(Elaboratable):
         comb += self.axi_lite.rresp.eq(0)
         comb += self.axi_lite.bresp.eq(0)
         
-        with m.FSM() as fsm_rd:
+        with m.FSM(domain=self.domain) as fsm_rd:
             with m.State("IDLE"):
                 comb += self.axi_lite.arready.eq(1)
                 comb += self.axi_lite.rvalid.eq(0)
@@ -63,7 +64,7 @@ class AxiLiteDevice(Elaboratable):
                     sync += self.axi_lite.rdata.eq(0)
                     m.next = "IDLE"
 
-        with m.FSM() as fsm_wr:
+        with m.FSM(domain=self.domain) as fsm_wr:
             with m.State("IDLE"):
                 comb += [self.axi_lite.awready.eq(1),
                          self.axi_lite.wready.eq(1),

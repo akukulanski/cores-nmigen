@@ -178,6 +178,17 @@ class AxiLiteDriver(BusDriver):
         self.registers = {}
         self.transactions = []
 
+    def init_zero(self):
+        self.bus.AWADDR <= 0
+        self.bus.AWVALID <= 0
+        self.bus.WDATA <= 0
+        self.bus.WSTRB <= 0
+        self.bus.WVALID <= 0
+        self.bus.BREADY <= 0
+        self.bus.ARADDR <= 0
+        self.bus.ARVALID <= 0
+        self.bus.RREADY <= 0
+
     def aw_accepted(self):
         return self.bus.AWVALID.value.integer == 1 and self.bus.AWREADY.value.integer == 1
 

@@ -54,6 +54,7 @@ class AxiStream(Record):
         self.valid = self.TVALID
         self.ready = self.TREADY
         self.last = self.TLAST
+        self.data = self.TDATA
 
     def accepted(self):
         return (self.TVALID == 1) & (self.TREADY == 1)

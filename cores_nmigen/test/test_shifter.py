@@ -2,12 +2,13 @@ from nmigen_cocotb import run
 from cores_nmigen.shifters import PipelinedBarrelShifter
 import random
 import pytest
+from .interfaces import *
 
 try:
     import cocotb
     from cocotb.triggers import RisingEdge
     from cocotb.clock import Clock
-    from .interfaces import *
+    from cocotb.regression import TestFactory as TF
 except:
     pass
 
@@ -24,16 +25,9 @@ def init_test(dut):
     dut.rst <= 0
     yield RisingEdge(dut.clk)
 
-@cocotb.coroutine
-def send_data(stream, data):
-    for d in data:
-        if isinstance(d, tuple) or isinstance(d, list):
-            yield stream.write(*d)
-        else:
-            yield stream.write(d)
 
-@cocotb.test()
-def data_check(dut):
+@cocotb.coroutine
+def check_data(dut, burps_in, burps_out):
     size = 1000
     yield init_test(dut)
     input_stream = ShifterStreamDriver(dut, 'input_', dut.clk)
@@ -43,8 +37,8 @@ def data_check(dut):
     for _ in range(5):
         data = [(random.getrandbits(input_width),
                  random.randint(0, input_width-1)) for _ in range(size)]
-        cocotb.fork(input_stream.send(data))
-        rcv = yield output_stream.recv()
+        cocotb.fork(input_stream.send(data, burps=burps_in))
+        rcv = yield output_stream.recv(burps=burps_out)
 
         for idata, odata in zip(data, rcv):
             data = idata[0]
@@ -53,6 +47,13 @@ def data_check(dut):
             expected = shifted % (2**input_width) + (shifted >> input_width)
             assert expected == odata[0]
             assert idata[1] == odata[1]
+
+
+tf_test = TF(check_data)
+tf_test.add_option('burps_in', [False, True])
+tf_test.add_option('burps_out', [False, True])
+tf_test.generate_tests()
+
 
 @pytest.mark.parametrize("width", [12 * (2**n) for n in range(4)])
 def test_main(width):

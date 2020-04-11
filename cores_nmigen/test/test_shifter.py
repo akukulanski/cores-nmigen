@@ -13,11 +13,11 @@ except:
 
 @cocotb.coroutine
 def init_test(dut):
-    dut.output__ready <= 0
-    dut.input__valid <= 0
+    dut.output__TREADY <= 0
+    dut.input__TVALID <= 0
     dut.input__data <= 0
     dut.input__shift <= 0
-    dut.input__last <= 0
+    dut.input__TLAST <= 0
     dut.rst <= 0
     cocotb.fork(Clock(dut.clk, 10, 'ns').start())
     yield RisingEdge(dut.clk)

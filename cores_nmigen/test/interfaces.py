@@ -4,7 +4,7 @@ from cocotb.triggers import RisingEdge
 import random
 
 class StreamDriver(BusDriver):
-    _signals =['valid', 'ready', 'last', 'data']
+    _signals =['TVALID', 'TREADY', 'TLAST', 'TDATA']
 
     def __init__(self, entity, name, clock):
         BusDriver.__init__(self, entity, name, clock)
@@ -12,24 +12,24 @@ class StreamDriver(BusDriver):
         self.buffer = []
 
     def accepted(self):
-        return self.bus.valid.value.integer == 1 and self.bus.ready.value.integer == 1
+        return self.bus.TVALID.value.integer == 1 and self.bus.TREADY.value.integer == 1
 
     @cocotb.coroutine
     def _send(self, *data):
         self.write(*data)
-        self.bus.valid <= 1
+        self.bus.TVALID <= 1
         yield RisingEdge(self.clk)
         while not self.accepted():
             yield RisingEdge(self.clk)
-        self.bus.valid <= 0
+        self.bus.TVALID <= 0
 
     @cocotb.coroutine
     def _recv(self):
-        self.bus.ready <= 1
+        self.bus.TREADY <= 1
         yield RisingEdge(self.clk)
         while not self.accepted():
             yield RisingEdge(self.clk)
-        self.bus.ready <= 0
+        self.bus.TREADY <= 0
         return self.read()
 
     @cocotb.coroutine
@@ -39,12 +39,12 @@ class StreamDriver(BusDriver):
                 yield self._send(*d)
             except TypeError:
                 yield self._send(d)
-        self.bus.last <= 1
+        self.bus.TLAST <= 1
         try:
             yield self._send(*data[-1])
         except TypeError:
             yield self._send(data[-1])
-        self.bus.last <= 0
+        self.bus.TLAST <= 0
 
     @cocotb.coroutine
     def recv(self):
@@ -52,15 +52,15 @@ class StreamDriver(BusDriver):
         while True:
             d = yield self._recv()
             data.append(d)
-            if self.bus.last.value.integer == 1:
+            if self.bus.TLAST.value.integer == 1:
                 break
         return data
 
     def write(self, *data):
-        self.bus.data <= data[0]
+        self.bus.TDATA <= data[0]
 
     def read(self):
-        data = self.bus.data.value.integer
+        data = self.bus.TDATA.value.integer
         return data
 
     @cocotb.coroutine
@@ -73,7 +73,7 @@ class StreamDriver(BusDriver):
 
     
 class ShifterStreamDriver(StreamDriver):
-    _signals =['valid', 'ready', 'last', 'data', 'shift']
+    _signals =['TVALID', 'TREADY', 'TLAST', 'data', 'shift']
 
     def write(self, *data):
         self.bus.data <= data[0]

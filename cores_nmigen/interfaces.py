@@ -7,57 +7,40 @@ class MetaStream(Record):
     def __init__(self, width, direction=None, name=None, fields=None):
         self.width = width
         if direction == 'sink':
-            layout = [('valid', 1, Direction.FANIN),
-                      ('ready', 1, Direction.FANOUT),
-                      ('last', 1, Direction.FANIN)]
+            layout = [('TVALID', 1, Direction.FANIN),
+                      ('TREADY', 1, Direction.FANOUT),
+                      ('TLAST', 1, Direction.FANIN)]
             for d in self.DATA_FIELDS:
                 layout.append((d[0], d[1], Direction.FANIN))
         elif direction == 'source':
-            layout = [('valid', 1, Direction.FANOUT),
-                      ('ready', 1, Direction.FANIN),
-                      ('last', 1, Direction.FANOUT)]
+            layout = [('TVALID', 1, Direction.FANOUT),
+                      ('TREADY', 1, Direction.FANIN),
+                      ('TLAST', 1, Direction.FANOUT)]
             for d in self.DATA_FIELDS:
                 layout.append((d[0], d[1], Direction.FANOUT))
         else:
-            layout = [('valid', 1),
-                      ('ready', 1),
-                      ('last', 1)]
+            layout = [('TVALID', 1),
+                      ('TREADY', 1),
+                      ('TLAST', 1)]
             for d in self.DATA_FIELDS:
                 layout.append((d[0], d[1]))
         Record.__init__(self, layout, name=name, fields=fields)
+        self.valid = self.TVALID
+        self.ready = self.TREADY
+        self.last = self.TLAST
         
     def accepted(self):
         return (self.valid == 1) & (self.ready == 1)
 
 
-class Stream(MetaStream):
+class AxiStream(MetaStream):
     def __init__(self, width, direction=None, name=None, fields=None):
-        self.DATA_FIELDS = [('data', width)]
-        MetaStream.__init__(self, width, direction, name=name, fields=fields)
-
-
-class AxiStream(Record):
-    def __init__(self, width, direction=None, name=None, fields=None):
-        self.width = width
         self.DATA_FIELDS = [('TDATA', width)]
-        if direction == 'sink':
-            layout = [('TDATA', width, Direction.FANIN),
-                      ('TVALID', 1, Direction.FANIN),
-                      ('TREADY', 1, Direction.FANOUT),
-                      ('TLAST', 1, Direction.FANIN)]
-        elif direction == 'source':
-            layout = [('TDATA', width, Direction.FANOUT),
-                      ('TVALID', 1, Direction.FANOUT),
-                      ('TREADY', 1, Direction.FANIN),
-                      ('TLAST', 1, Direction.FANOUT)]
-        Record.__init__(self, layout, name=name, fields=fields)
+        MetaStream.__init__(self, width, direction, name=name, fields=fields)
         self.valid = self.TVALID
         self.ready = self.TREADY
         self.last = self.TLAST
         self.data = self.TDATA
-
-    def accepted(self):
-        return (self.TVALID == 1) & (self.TREADY == 1)
 
 
 class ShifterStream(MetaStream):

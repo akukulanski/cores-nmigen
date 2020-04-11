@@ -1,5 +1,5 @@
 from nmigen_cocotb import run
-from cores.axi_lite import AxiLiteDevice
+from cores_nmigen.axi_lite import AxiLiteDevice
 import random
 
 try:
@@ -111,4 +111,4 @@ def test_axi_lite_device():
                          registers=regs)
     ports = [core.axi_lite[f] for f in core.axi_lite.fields]
     ports += [core.registers[f] for f in core.registers.fields]
-    run(core, 'cores.test.test_axi_lite', ports=ports, vcd_file='./test_axi_lite_device.vcd')
+    run(core, 'cores_nmigen.test.test_axi_lite', ports=ports, vcd_file='./test_axi_lite_device.vcd')

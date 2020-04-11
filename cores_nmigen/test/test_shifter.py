@@ -1,5 +1,5 @@
 from nmigen_cocotb import run
-from cores.shifters import PipelinedBarrelShifter
+from cores_nmigen.shifters import PipelinedBarrelShifter
 import random
 import pytest
 
@@ -59,4 +59,4 @@ def test_main(width):
     shifter = PipelinedBarrelShifter(width)
     ports = [shifter.input[f] for f in shifter.input.fields]   
     ports += [shifter.output[f] for f in shifter.output.fields]
-    run(shifter, 'cores.test.test_shifter', ports=ports, vcd_file=None)
+    run(shifter, 'cores_nmigen.test.test_shifter', ports=ports, vcd_file=None)

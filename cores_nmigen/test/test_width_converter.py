@@ -1,5 +1,5 @@
 from nmigen_cocotb import run
-from cores.width_converter import WidthConverter
+from cores_nmigen.width_converter import WidthConverter
 import pytest
 import random
 from math import ceil
@@ -129,4 +129,4 @@ def test_width_converter(width_in, width_out):
                           width_out=width_out)
     ports = [core.input[f] for f in core.input.fields]
     ports += [core.output[f] for f in core.output.fields]
-    run(core, 'cores.test.test_width_converter', ports=ports, vcd_file=f'./output_i{width_in}_o{width_out}.vcd')
+    run(core, 'cores_nmigen.test.test_width_converter', ports=ports, vcd_file=f'./output_i{width_in}_o{width_out}.vcd')

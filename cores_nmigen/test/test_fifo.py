@@ -1,6 +1,6 @@
 from nmigen_cocotb import run
-from cores.fifo import AxiStreamFifo
-from cores.interfaces import AxiStream
+from cores_nmigen.fifo import AxiStreamFifo
+from cores_nmigen.interfaces import AxiStream
 import random
 import os
 
@@ -43,5 +43,5 @@ def test_axi_stream():
     ports = [fifo.input[f] for f in fifo.input.fields]   
     ports += [fifo.output[f] for f in fifo.output.fields]
     os.environ['TESTCASE'] = 'axi_stream_test'
-    run(fifo, 'cores.test.test_fifo', ports=ports, vcd_file='axi.vcd')
+    run(fifo, 'cores_nmigen.test.test_fifo', ports=ports, vcd_file='axi.vcd')
     del(os.environ['TESTCASE'])

@@ -1,5 +1,5 @@
 from nmigen_cocotb import run
-from cores.fifo import AxiStreamFifoCDC
+from cores_nmigen.fifo import AxiStreamFifoCDC
 import random
 import pytest
 import os
@@ -55,4 +55,4 @@ def test_main():
     fifo = AxiStreamFifoCDC(random.randint(2, 20), random.randint(2, 10), r_domain='read', w_domain='write')
     ports = [fifo.input[f] for f in fifo.input.fields]   
     ports += [fifo.output[f] for f in fifo.output.fields]
-    run(fifo, 'cores.test.test_fifo_cdc', ports=ports, vcd_file='axis_fifo_cdc.vcd')
+    run(fifo, 'cores_nmigen.test.test_fifo_cdc', ports=ports, vcd_file='axis_fifo_cdc.vcd')

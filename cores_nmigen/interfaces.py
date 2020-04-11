@@ -37,9 +37,6 @@ class AxiStream(MetaStream):
     def __init__(self, width, direction=None, name=None, fields=None):
         self.DATA_FIELDS = [('TDATA', width)]
         MetaStream.__init__(self, width, direction, name=name, fields=fields)
-        self.valid = self.TVALID
-        self.ready = self.TREADY
-        self.last = self.TLAST
         self.data = self.TDATA
 
 

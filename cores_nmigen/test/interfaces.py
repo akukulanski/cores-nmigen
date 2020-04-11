@@ -3,7 +3,9 @@ from cocotb.drivers import BusDriver
 from cocotb.triggers import RisingEdge
 import random
 
-class StreamDriver(BusDriver):
+
+class AxiStreamDriver(BusDriver):
+    
     _signals =['TVALID', 'TREADY', 'TLAST', 'TDATA']
 
     def __init__(self, entity, name, clock):
@@ -14,68 +16,68 @@ class StreamDriver(BusDriver):
     def accepted(self):
         return self.bus.TVALID.value.integer == 1 and self.bus.TREADY.value.integer == 1
 
-    @cocotb.coroutine
-    def _send(self, *data):
-        self.write(*data)
-        self.bus.TVALID <= 1
-        yield RisingEdge(self.clk)
-        while not self.accepted():
-            yield RisingEdge(self.clk)
-        self.bus.TVALID <= 0
-
-    @cocotb.coroutine
-    def _recv(self):
-        self.bus.TREADY <= 1
-        yield RisingEdge(self.clk)
-        while not self.accepted():
-            yield RisingEdge(self.clk)
-        self.bus.TREADY <= 0
-        return self.read()
-
-    @cocotb.coroutine
-    def send(self, data):
-        for d in data[:-1]:
-            try:
-                yield self._send(*d)
-            except TypeError:
-                yield self._send(d)
-        self.bus.TLAST <= 1
-        try:
-            yield self._send(*data[-1])
-        except TypeError:
-            yield self._send(data[-1])
-        self.bus.TLAST <= 0
-
-    @cocotb.coroutine
-    def recv(self):
-        data = []
-        while True:
-            d = yield self._recv()
-            data.append(d)
-            if self.bus.TLAST.value.integer == 1:
-                break
-        return data
-
-    def write(self, *data):
-        self.bus.TDATA <= data[0]
+    def write(self, data):
+        self.bus.TDATA <= data
 
     def read(self):
-        data = self.bus.TDATA.value.integer
-        return data
+        return self.bus.TDATA.value.integer
+
+    def _get_random_data(self):
+        return random.randint(0, 2**len(self.bus.TDATA)-1)
 
     @cocotb.coroutine
     def monitor(self):
         while True:
             if self.accepted():
-                data = self.read()
-                self.buffer.append(data)
+                self.buffer.append(self.read())
             yield RisingEdge(self.clk)
 
-    
-class ShifterStreamDriver(StreamDriver):
+    @cocotb.coroutine
+    def send(self, data, burps=False):
+        data = list(data)
+        while len(data):
+            if burps:
+                valid = random.randint(0, 1)
+            else:
+                valid = 1
+            self.bus.TVALID <= valid
+            if valid:
+                self.write(data[0])
+                self.bus.TLAST <= 1 if (len(data) == 1) else 0
+            else:
+                self.write(self._get_random_data())
+                self.bus.TLAST <= 0
+                # self.bus.TLAST <= random.randint(0, 1)
+            yield RisingEdge(self.clk)
+            if self.accepted():
+                data.pop(0)
+        self.bus.TVALID <= 0
+        self.bus.TLAST <= 0
+
+    @cocotb.coroutine
+    def recv(self, n=-1, burps=False):
+        rd = []
+        while n:
+            if burps:
+                ready = random.randint(0, 1)
+            else:
+                ready = 1
+            self.bus.TREADY <= ready
+            yield RisingEdge(self.clk)
+            if self.accepted():
+                rd.append(self.read())
+                n = n - 1
+                if self.bus.TLAST.value.integer:
+                    break
+        self.bus.TREADY <= 0
+        return rd
+
+
+class ShifterStreamDriver(AxiStreamDriver):
+
     _signals =['TVALID', 'TREADY', 'TLAST', 'data', 'shift']
 
-    def write(self, *data):
+    def write(self, data):
         self.bus.data <= data[0]
         self.bus.shift <= data[1]
 
@@ -84,88 +86,14 @@ class ShifterStreamDriver(StreamDriver):
         shift = self.bus.shift.value.integer
         return data, shift
 
-        
-class AxiStreamDriver(StreamDriver):
-    _signals =['TVALID', 'TREADY', 'TLAST', 'TDATA']
-
-    def accepted(self):
-        return self.bus.TVALID.value.integer == 1 and self.bus.TREADY.value.integer == 1
-
-    @cocotb.coroutine
-    def _send(self, *data):
-        self.write(*data)
-        self.bus.TVALID <= 1
-        yield RisingEdge(self.clk)
-        while not self.accepted():
-            yield RisingEdge(self.clk)
-        self.bus.TVALID <= 0
-
-    @cocotb.coroutine
-    def _recv(self):
-        self.bus.TREADY <= 1
-        yield RisingEdge(self.clk)
-        while not self.accepted():
-            yield RisingEdge(self.clk)
-        self.bus.TREADY <= 0
-        return self.read()
-
-    @cocotb.coroutine
-    def send(self, data):
-        for d in data[:-1]:
-            try:
-                yield self._send(*d)
-            except TypeError:
-                yield self._send(d)
-        self.bus.TLAST <= 1
-        try:
-            yield self._send(*data[-1])
-        except TypeError:
-            yield self._send(data[-1])
-        self.bus.TLAST <= 0
-
-    @cocotb.coroutine
-    def recv(self):
-        data = []
-        while True:
-            d = yield self._recv()
-            data.append(d)
-            if self.bus.TLAST.value.integer == 1:
-                break
-        return data
-
-    def write(self, *data):
-        self.bus.TDATA <= data[0]
-
-    def read(self):
-        data = self.bus.TDATA.value.integer
-        return data
-
-    @cocotb.coroutine
-    def monitor(self):
-        while True:
-            if self.accepted():
-                data = self.read()
-                self.buffer.append(data)
-            yield RisingEdge(self.clk)
-
-class AxiStreamDriverBurps(AxiStreamDriver):
-    @cocotb.coroutine
-    def _send(self, *data):
-        clocks_to_wait = random.choice(5*[0]+3*[1]+2*[2]+2*[3])
-        for _ in range(clocks_to_wait):
-            yield RisingEdge(self.clk)
-        yield AxiStreamDriver._send(self, *data)
-
-    @cocotb.coroutine
-    def _recv(self):
-        clocks_to_wait = random.choice(5*[0]+3*[1]+2*[2]+2*[3])
-        for _ in range(clocks_to_wait):
-            yield RisingEdge(self.clk)
-        data = yield AxiStreamDriver._recv(self)
-        return data
+    def _get_random_data(self):
+        data = random.randint(0, 2**len(self.bus.data)-1)
+        shift = random.randint(0, 2**len(self.bus.shift)-1) 
+        return data, shift
 
 
 class AxiLiteDriver(BusDriver):
+
     _signals =['AWADDR', 'AWVALID', 'AWREADY',
                'WDATA', 'WSTRB', 'WVALID', 'WREADY',
                'BRESP', 'BVALID', 'BREADY',

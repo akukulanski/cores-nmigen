@@ -22,14 +22,14 @@ class AxiStreamFifo(Elaboratable):
 
         m.submodules.fifo_core = fifo = self.fifo(width=fifo_width, depth=self.depth)
         comb += fifo.w_en.eq(self.input.accepted())
-        comb += fifo.w_data.eq(Cat(self.input.TDATA, self.input.last))
+        comb += fifo.w_data.eq(Cat(self.input.data, self.input.last))
         comb += self.input.ready.eq(fifo.w_rdy)
 
         comb += self.output.valid.eq(fifo.r_rdy)
         comb += fifo.r_en.eq(self.output.accepted())
 
-        comb += self.output.TDATA.eq(fifo.r_data[:self.width])
-        comb += self.output.TLAST.eq(fifo.r_data[-1])
+        comb += self.output.data.eq(fifo.r_data[:self.width])
+        comb += self.output.last.eq(fifo.r_data[-1])
 
         return m
 
@@ -53,14 +53,14 @@ class AxiStreamFifoCDC(Elaboratable):
 
         m.submodules.fifo_core = fifo = AsyncFIFO(width=fifo_width, depth=self.depth, r_domain=self.r_domain, w_domain=self.w_domain)
         comb += fifo.w_en.eq(self.input.accepted())
-        comb += fifo.w_data.eq(Cat(self.input.TDATA, self.input.last))
+        comb += fifo.w_data.eq(Cat(self.input.data, self.input.last))
         comb += self.input.ready.eq(fifo.w_rdy)
 
         comb += self.output.valid.eq(fifo.r_rdy)
         comb += fifo.r_en.eq(self.output.accepted())
 
-        comb += self.output.TDATA.eq(fifo.r_data[:self.width])
-        comb += self.output.TLAST.eq(fifo.r_data[-1])
+        comb += self.output.data.eq(fifo.r_data[:self.width])
+        comb += self.output.last.eq(fifo.r_data[-1])
 
         return m
 

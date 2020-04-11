@@ -34,20 +34,22 @@ def init_axis_fifo_cdc_test(dut, period_ns_w, period_ns_r):
     yield RisingEdge(dut.read_clk)
 
 @cocotb.coroutine
-def axis_fifo_cdc_test(dut, period_ns_w, period_ns_r):
+def axis_fifo_cdc_test(dut, period_ns_w, period_ns_r, burps_in, burps_out):
     length = 1000
     yield init_axis_fifo_cdc_test(dut, period_ns_w, period_ns_r)
     input_stream = AxiStreamDriver(dut, 'input_', dut.write_clk)
     output_stream = AxiStreamDriver(dut, 'output_', dut.read_clk)
     data = [random.getrandbits(len(input_stream.bus.TDATA)) for _ in range(length)]
-    cocotb.fork(input_stream.send(data))
-    rcv = yield output_stream.recv()
+    cocotb.fork(input_stream.send(data, burps=burps_in))
+    rcv = yield output_stream.recv(burps=burps_out)
     assert data == rcv, f'\n{data}\n!=\n{rcv}'
 
 
 tf_axis_fifo_cdc = TF(axis_fifo_cdc_test)
 tf_axis_fifo_cdc.add_option('period_ns_w', [10])
 tf_axis_fifo_cdc.add_option('period_ns_r', [10, 22, 3])
+tf_axis_fifo_cdc.add_option('burps_in',  [False, True])
+tf_axis_fifo_cdc.add_option('burps_out', [False, True])
 tf_axis_fifo_cdc.generate_tests(postfix='_cdc')
 
 

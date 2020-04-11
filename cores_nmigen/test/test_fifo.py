@@ -1,13 +1,12 @@
 from nmigen_cocotb import run
 from cores_nmigen.fifo import AxiStreamFifo
-from cores_nmigen.interfaces import AxiStream
 import random
-import os
 
 try:
     import cocotb
     from cocotb.triggers import RisingEdge
     from cocotb.clock import Clock
+    from cocotb.regression import TestFactory as TF
     from .interfaces import AxiStreamDriver
 except:
     pass
@@ -26,22 +25,24 @@ def init_axi_test(dut):
     yield RisingEdge(dut.clk)
 
 
-@cocotb.test()
-def axi_stream_test(dut):
+@cocotb.coroutine
+def check_data(dut, burps_in, burps_out):
     size = 1000
     yield init_axi_test(dut)
     input_stream = AxiStreamDriver(dut, 'input_', dut.clk)
     output_stream = AxiStreamDriver(dut, 'output_', dut.clk)
     data = [random.getrandbits(len(input_stream.bus.TDATA)) for _ in range(size)]
-    cocotb.fork(input_stream.send(data))
-    rcv = yield output_stream.recv()
+    cocotb.fork(input_stream.send(data, burps=burps_in))
+    rcv = yield output_stream.recv(burps=burps_out)
     assert data == rcv
 
+tf_check_data = TF(check_data)
+tf_check_data.add_option('burps_in', [False, True])
+tf_check_data.add_option('burps_out', [False, True])
+tf_check_data.generate_tests()
 
 def test_axi_stream():
     fifo = AxiStreamFifo(random.randint(2, 20), random.randint(2, 10))
     ports = [fifo.input[f] for f in fifo.input.fields]   
     ports += [fifo.output[f] for f in fifo.output.fields]
-    os.environ['TESTCASE'] = 'axi_stream_test'
     run(fifo, 'cores_nmigen.test.test_fifo', ports=ports, vcd_file='axi.vcd')
-    del(os.environ['TESTCASE'])

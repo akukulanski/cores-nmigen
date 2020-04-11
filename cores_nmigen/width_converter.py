@@ -3,17 +3,18 @@ from .interfaces import AxiStream
 from math import ceil
 
 class WidthConverterDown(Elaboratable):
-    def __init__(self, width_in, width_out):
+    def __init__(self, width_in, width_out, domain='sync'):
         assert width_in % width_out == 0
         self.width_in = width_in
         self.width_out = width_out
+        self.domain = domain
         self.ratio = int(ceil(self.width_in / self.width_out))
         self.input = AxiStream(self.width_in, 'sink', name='INPUT')
         self.output = AxiStream(self.width_out, 'source', name='OUTPUT')
 
     def elaborate(self, platform):
         m = Module()
-        sync = m.d.sync
+        sync = m.d[self.domain]
         comb = m.d.comb
         
         data_buffer = Signal(self.width_in)
@@ -50,17 +51,18 @@ class WidthConverterDown(Elaboratable):
         return m
 
 class WidthConverterUp(Elaboratable):
-    def __init__(self, width_in, width_out):
+    def __init__(self, width_in, width_out, domain='sync'):
         assert width_out % width_in == 0
         self.width_in = width_in
         self.width_out = width_out
+        self.domain = domain
         self.ratio = self.width_out // self.width_in
         self.input = AxiStream(self.width_in, 'sink', name='INPUT')
         self.output = AxiStream(self.width_out, 'source', name='OUTPUT')
 
     def elaborate(self, platform):
         m = Module()
-        sync = m.d.sync
+        sync = m.d[self.domain]
         comb = m.d.comb
         
         data_counter = Signal(range(0, self.ratio+1))
@@ -93,15 +95,16 @@ class WidthConverterUp(Elaboratable):
         return m
 
 class WidthConverterUnity(Elaboratable):
-    def __init__(self, width_in, width_out):
+    def __init__(self, width_in, width_out, domain='sync'):
         assert width_in == width_out
         self.width_in = width_in
         self.width_out = width_out
+        self.domain = domain
         self.input = AxiStream(self.width_in, 'sink', name='INPUT')
         self.output = AxiStream(self.width_out, 'source', name='OUTPUT')
     def elaborate(self, platform):
         m = Module()
-        sync = m.d.sync
+        sync = m.d[self.domain]
         comb = m.d.comb
         # Force synchronic implementation
         dummy = Signal()
@@ -113,6 +116,11 @@ class WidthConverterUnity(Elaboratable):
         comb += self.input.TREADY.eq(self.output.TREADY)
         return m
 
-WidthConverter = lambda width_in, width_out: WidthConverterDown(width_in, width_out) if width_in > width_out \
-                                                else (WidthConverterUp(width_in, width_out) if width_in < width_out \
-                                                else WidthConverterUnity(width_in, width_out))
+
+def WidthConverter(width_in, width_out, domain='sync'):
+    if width_in > width_out:
+        return WidthConverterDown(width_in, width_out, domain)
+    elif width_in < width_out:
+        return WidthConverterUp(width_in, width_out, domain)
+    else:
+         return WidthConverterUnity(width_in, width_out, domain)

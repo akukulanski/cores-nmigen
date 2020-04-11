@@ -2,6 +2,7 @@ from nmigen import *
 from nmigen.lib.fifo import SyncFIFOBuffered, SyncFIFO, AsyncFIFO
 from .interfaces import AxiStream
 
+
 class AxiStreamFifo(Elaboratable):
     def __init__(self, width, depth, fifo=SyncFIFO):
         """

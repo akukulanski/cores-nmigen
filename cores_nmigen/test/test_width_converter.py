@@ -3,13 +3,13 @@ from cores_nmigen.width_converter import WidthConverter
 import pytest
 import random
 from math import ceil
+from .interfaces import *
 
 try:
     import cocotb
     from cocotb.triggers import RisingEdge
     from cocotb.clock import Clock
     from cocotb.regression import TestFactory as TF
-    from .interfaces import *
 except:
     pass
 
@@ -83,7 +83,7 @@ def init_test(dut):
     yield RisingEdge(dut.clk)
 
 @cocotb.coroutine
-def check_data(dut, multiple, burps):
+def check_data(dut, multiple, burps_in, burps_out):
     """
     description
         Tests the burst capabilities of the width converter.
@@ -97,11 +97,9 @@ def check_data(dut, multiple, burps):
                     to complete an output packet, the behaviour of the core is to make it available
                     in the output filling the empty space with zeros and asserting OUTPUT_TLAST.
     """
-    axi_driver = AxiStreamDriver if not burps else AxiStreamDriverBurps
-
     yield init_test(dut)
-    input_stream = axi_driver(dut, 'INPUT_', dut.clk)
-    output_stream = axi_driver(dut, 'OUTPUT_', dut.clk)
+    input_stream = AxiStreamDriver(dut, 'INPUT_', dut.clk)
+    output_stream = AxiStreamDriver(dut, 'OUTPUT_', dut.clk)
     width_in = len(dut.INPUT__TDATA)
     width_out = len(dut.OUTPUT__TDATA)
     ratio = convertion_ratio(dut)
@@ -110,18 +108,21 @@ def check_data(dut, multiple, burps):
     output_len = ceil(input_len / ratio)
     data = [random.randint(0, 2**width_in-1) for _ in range(input_len)]
 
-    cocotb.fork(input_stream.send(data))
-    rcv = yield output_stream.recv()
+    cocotb.fork(input_stream.send(data, burps=burps_in))
+    rcv = yield output_stream.recv(burps=burps_out)
     yield RisingEdge(dut.clk)
 
     expected = calculate_expected_result(data, width_in, width_out)
     assert len(rcv) >= output_len, f'Read {len(rcv)} instead of {output_len} values in burst'
     assert rcv == expected, f'rcv=\n{rcv}\n\nexpected=\n{expected}\n'
 
-tf_test_burst = TF(check_data)
-tf_test_burst.add_option('multiple', [True, False])
-tf_test_burst.add_option('burps', [True, False])
-tf_test_burst.generate_tests()
+
+tf_test = TF(check_data)
+tf_test.add_option('multiple', [True, False])
+tf_test.add_option('burps_in', [False, True])
+tf_test.add_option('burps_out', [False, True])
+tf_test.generate_tests()
+
 
 @pytest.mark.parametrize("width_in, width_out", [(8, 24), (24, 24), (24, 8)])
 def test_width_converter(width_in, width_out):

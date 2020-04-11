@@ -22,6 +22,12 @@ class AxiStreamDriver(BusDriver):
     def read(self):
         return self.bus.TDATA.value.integer
 
+    def read_last(self):
+        try:
+            return self.bus.TLAST.value.integer
+        except:
+            return 0
+
     def _get_random_data(self):
         return random.randint(0, 2**len(self.bus.TDATA)-1)
 
@@ -67,7 +73,7 @@ class AxiStreamDriver(BusDriver):
             if self.accepted():
                 rd.append(self.read())
                 n = n - 1
-                if self.bus.TLAST.value.integer:
+                if self.read_last():
                     break
         self.bus.TREADY <= 0
         return rd

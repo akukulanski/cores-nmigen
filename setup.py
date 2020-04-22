@@ -2,6 +2,8 @@ import setuptools
 
 install_requires = [
     'pytest',
+    'pytest-timeout',
+    'pytest-repeat',
     'numpy',
     'cocotb',
     'nmigen @ git+https://github.com/m-labs/nmigen.git@v0.1#egg=nmigen',

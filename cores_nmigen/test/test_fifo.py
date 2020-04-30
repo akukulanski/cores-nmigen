@@ -3,6 +3,7 @@ from cores_nmigen.fifo import StreamFifo
 from cores_nmigen.interfaces import DataStream
 from cores_nmigen.test.interfaces import DataStreamDriver
 import random
+import pytest
 
 try:
     import cocotb
@@ -28,7 +29,7 @@ def init_axi_test(dut):
 
 @cocotb.coroutine
 def check_data(dut, burps_in, burps_out):
-    size = 1000
+    size = 200
     yield init_axi_test(dut)
     input_stream = DataStreamDriver(dut, 'input_', dut.clk)
     output_stream = DataStreamDriver(dut, 'output_', dut.clk)
@@ -42,12 +43,11 @@ tf_check_data.add_option('burps_in', [False, True])
 tf_check_data.add_option('burps_out', [False, True])
 tf_check_data.generate_tests()
 
-def test_axi_stream():
-    width = random.randint(2, 20)
-    depth = random.randint(2, 10)
+@pytest.mark.parametrize("width, depth", [(random.randint(2, 20), random.randint(2, 10))])
+def test_main(width, depth):
     fifo = StreamFifo(input_stream=DataStream(width, 'sink', name='input'),
                       output_stream=DataStream(width, 'source', name='output'),
                       depth=depth)
     ports = [fifo.input[f] for f in fifo.input.fields]   
     ports += [fifo.output[f] for f in fifo.output.fields]
-    run(fifo, 'cores_nmigen.test.test_fifo', ports=ports, vcd_file='axi.vcd')
+    run(fifo, 'cores_nmigen.test.test_fifo', ports=ports, vcd_file='test_stream_fifo.vcd')

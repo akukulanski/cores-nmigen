@@ -1,9 +1,9 @@
 from nmigen_cocotb import run
 from cores_nmigen.width_converter import WidthConverter
+from cores_nmigen.test.interfaces import DataStreamDriver
 import pytest
 import random
 from math import ceil
-from .interfaces import *
 
 try:
     import cocotb
@@ -17,8 +17,8 @@ CLK_PERIOD_BASE = 100
 random.seed()
 
 def convertion_ratio(dut):
-    maximo = max(len(dut.INPUT__TDATA), len(dut.OUTPUT__TDATA))
-    minimo = min(len(dut.INPUT__TDATA), len(dut.OUTPUT__TDATA))
+    maximo = max(len(dut.INPUT__data), len(dut.OUTPUT__data))
+    minimo = min(len(dut.INPUT__data), len(dut.OUTPUT__data))
     return maximo // minimo
 
 def calculate_expected_result(data, width_in, width_out):
@@ -72,10 +72,10 @@ def unpack(buffer, elements, element_width):
 
 @cocotb.coroutine
 def init_test(dut):
-    dut.OUTPUT__TREADY <= 0
-    dut.INPUT__TVALID <= 0
-    dut.INPUT__TDATA <= 0
-    dut.INPUT__TLAST <= 0
+    dut.OUTPUT__ready <= 0
+    dut.INPUT__valid <= 0
+    dut.INPUT__data <= 0
+    dut.INPUT__last <= 0
     dut.rst <= 1
     cocotb.fork(Clock(dut.clk, 10, 'ns').start())
     yield RisingEdge(dut.clk)
@@ -93,15 +93,15 @@ def check_data(dut, multiple, burps_in, burps_out):
     parameters
         dut         device under test
         multiple    decides whether writing a multiple of the widths ratio or not.
-                    In the condition of a TLAST received when there are not enough input packets
+                    In the condition of a last received when there are not enough input packets
                     to complete an output packet, the behaviour of the core is to make it available
-                    in the output filling the empty space with zeros and asserting OUTPUT_TLAST.
+                    in the output filling the empty space with zeros and asserting OUTPUT_last.
     """
     yield init_test(dut)
-    input_stream = AxiStreamDriver(dut, 'INPUT_', dut.clk)
-    output_stream = AxiStreamDriver(dut, 'OUTPUT_', dut.clk)
-    width_in = len(dut.INPUT__TDATA)
-    width_out = len(dut.OUTPUT__TDATA)
+    input_stream = DataStreamDriver(dut, 'INPUT_', dut.clk)
+    output_stream = DataStreamDriver(dut, 'OUTPUT_', dut.clk)
+    width_in = len(dut.INPUT__data)
+    width_out = len(dut.OUTPUT__data)
     ratio = convertion_ratio(dut)
     
     input_len = 100 * ratio + int(not(multiple))

@@ -14,11 +14,11 @@ except:
 
 @cocotb.coroutine
 def init_test(dut):
-    dut.output__TREADY <= 0
-    dut.input__TVALID <= 0
+    dut.output__ready <= 0
+    dut.input__valid <= 0
     dut.input__data <= 0
     dut.input__shift <= 0
-    dut.input__TLAST <= 0
+    dut.input__last <= 0
     dut.rst <= 0
     cocotb.fork(Clock(dut.clk, 10, 'ns').start())
     yield RisingEdge(dut.clk)
@@ -28,13 +28,13 @@ def init_test(dut):
 
 @cocotb.coroutine
 def check_data(dut, burps_in, burps_out):
-    size = 1000
     yield init_test(dut)
     input_stream = ShifterStreamDriver(dut, 'input_', dut.clk)
     output_stream = ShifterStreamDriver(dut, 'output_', dut.clk)
     input_width = len(input_stream.bus.data)
+    size = 200
 
-    for _ in range(5):
+    for _ in range(3):
         data = [(random.getrandbits(input_width),
                  random.randint(0, input_width-1)) for _ in range(size)]
         cocotb.fork(input_stream.send(data, burps=burps_in))
@@ -55,7 +55,7 @@ tf_test.add_option('burps_out', [False, True])
 tf_test.generate_tests()
 
 
-@pytest.mark.parametrize("width", [12 * (2**n) for n in range(4)])
+@pytest.mark.parametrize("width", [12, 24, 48])
 def test_main(width):
     shifter = PipelinedBarrelShifter(width)
     ports = [shifter.input[f] for f in shifter.input.fields]   

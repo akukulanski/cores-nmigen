@@ -1,5 +1,5 @@
 from nmigen import *
-from cores_nmigen.interfaces import AxiStreamMatrix
+from cores_nmigen.interfaces import MatrixStream
 import cores_nmigen.utils.matrix as mat
 
 class MatrixInterfaceBypass(Elaboratable):
@@ -7,8 +7,8 @@ class MatrixInterfaceBypass(Elaboratable):
     def __init__(self, width, shape):
         self.width = width
         self.shape = shape
-        self.input = AxiStreamMatrix(width=width, shape=shape, direction='sink', name='input')
-        self.output = AxiStreamMatrix(width=width, shape=shape, direction='source', name='output')
+        self.input = MatrixStream(width=width, shape=shape, direction='sink', name='input')
+        self.output = MatrixStream(width=width, shape=shape, direction='source', name='output')
 
     def get_ports(self):
         ports = [self.input[f] for f in self.input.fields]

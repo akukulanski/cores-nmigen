@@ -1,6 +1,6 @@
 from nmigen_cocotb import run
 import cores_nmigen.utils.matrix as mat
-from cores_nmigen.test.interfaces import AxiStreamMatrixDriver
+from cores_nmigen.test.interfaces import MatrixStreamDriver
 from cores_nmigen.test.matrix_bypass import MatrixInterfaceBypass
 import pytest
 import os
@@ -42,8 +42,8 @@ def check_data(dut, shape, dummy=0):
     test_size = 20
     yield init_test(dut)
 
-    m_axis = AxiStreamMatrixDriver(dut, name='input_', clock=dut.clk, shape=shape)
-    s_axis = AxiStreamMatrixDriver(dut, name='output_', clock=dut.clk, shape=shape)
+    m_axis = MatrixStreamDriver(dut, name='input_', clock=dut.clk, shape=shape)
+    s_axis = MatrixStreamDriver(dut, name='output_', clock=dut.clk, shape=shape)
     m_axis.init_sink()
     s_axis.init_source()
 
@@ -88,7 +88,7 @@ if running_cocotb:
 def test_matrix_interface(width, shape):
     os.environ['coco_param_shape'] = str(shape)
     core = MatrixInterfaceBypass(width=width,
-                                 shape=shape,
+                                 shape=shape
                                 )
     ports = core.get_ports()
     printable_shape = '_'.join([str(i) for i in shape])

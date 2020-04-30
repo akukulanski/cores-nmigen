@@ -1,5 +1,5 @@
 from nmigen import *
-from .interfaces import AxiStream
+from cores_nmigen.interfaces import DataStream
 from math import ceil
 
 class WidthConverterDown(Elaboratable):
@@ -9,8 +9,8 @@ class WidthConverterDown(Elaboratable):
         self.width_out = width_out
         self.domain = domain
         self.ratio = int(ceil(self.width_in / self.width_out))
-        self.input = AxiStream(self.width_in, 'sink', name='INPUT')
-        self.output = AxiStream(self.width_out, 'source', name='OUTPUT')
+        self.input = DataStream(self.width_in, 'sink', name='INPUT')
+        self.output = DataStream(self.width_out, 'source', name='OUTPUT')
 
     def elaborate(self, platform):
         m = Module()
@@ -28,25 +28,25 @@ class WidthConverterDown(Elaboratable):
             comb += buffer_empty.eq(0)
 
         with m.If(available_data == 1):
-            comb += self.input.TREADY.eq(self.output.accepted())
+            comb += self.input.ready.eq(self.output.accepted())
         with m.Else():
-            comb += self.input.TREADY.eq(buffer_empty)
+            comb += self.input.ready.eq(buffer_empty)
 
         with m.If(self.input.accepted()):
-            sync += data_buffer.eq(self.input.TDATA)
-            sync += last_buffer.eq(self.input.TLAST)
+            sync += data_buffer.eq(self.input.data)
+            sync += last_buffer.eq(self.input.last)
             sync += available_data.eq(self.ratio)
         with m.Elif(self.output.accepted()):
             sync += data_buffer.eq(data_buffer >> self.width_out)
             sync += available_data.eq(available_data-1)
 
         with m.If(available_data == 1):
-            comb += self.output.TLAST.eq(last_buffer)
+            comb += self.output.last.eq(last_buffer)
         with m.Else():
-            comb += self.output.TLAST.eq(0)
+            comb += self.output.last.eq(0)
 
-        comb += self.output.TVALID.eq(~buffer_empty)
-        comb += self.output.TDATA.eq(data_buffer[0:self.width_out])
+        comb += self.output.valid.eq(~buffer_empty)
+        comb += self.output.data.eq(data_buffer[0:self.width_out])
 
         return m
 
@@ -57,8 +57,8 @@ class WidthConverterUp(Elaboratable):
         self.width_out = width_out
         self.domain = domain
         self.ratio = self.width_out // self.width_in
-        self.input = AxiStream(self.width_in, 'sink', name='INPUT')
-        self.output = AxiStream(self.width_out, 'source', name='OUTPUT')
+        self.input = DataStream(self.width_in, 'sink', name='INPUT')
+        self.output = DataStream(self.width_out, 'source', name='OUTPUT')
 
     def elaborate(self, platform):
         m = Module()
@@ -69,28 +69,28 @@ class WidthConverterUp(Elaboratable):
         data_buffer = Array([Signal(self.width_in) for _ in range(self.ratio)])
 
         for i in range(self.ratio):
-            comb += self.output.TDATA[i*self.width_in:(i+1)*self.width_in].eq(data_buffer[i])
+            comb += self.output.data[i*self.width_in:(i+1)*self.width_in].eq(data_buffer[i])
         
         with m.If(self.output.accepted()):
-            sync += self.output.TVALID.eq(0)
-            sync += self.output.TLAST.eq(0)
+            sync += self.output.valid.eq(0)
+            sync += self.output.last.eq(0)
             for i in range(len(data_buffer)):
                 sync += data_buffer[i].eq(0)
         with m.If(self.input.accepted()):
-            sync += data_buffer[data_counter].eq(self.input.TDATA)
-            with m.If(self.input.TLAST):
-                sync += self.output.TVALID.eq(1)
-                sync += self.output.TLAST.eq(1)
+            sync += data_buffer[data_counter].eq(self.input.data)
+            with m.If(self.input.last):
+                sync += self.output.valid.eq(1)
+                sync += self.output.last.eq(1)
                 sync += data_counter.eq(0)
             with m.Elif(data_counter < self.ratio - 1):
                 sync += data_counter.eq(data_counter + 1)
-                sync += self.output.TLAST.eq(0)
+                sync += self.output.last.eq(0)
             with m.Else():
-                sync += self.output.TVALID.eq(1)
-                sync += self.output.TLAST.eq(0)
+                sync += self.output.valid.eq(1)
+                sync += self.output.last.eq(0)
                 sync += data_counter.eq(0)
 
-        comb += self.input.TREADY.eq((~self.output.TVALID) | (self.output.accepted()))
+        comb += self.input.ready.eq((~self.output.valid) | (self.output.accepted()))
 
         return m
 
@@ -100,8 +100,8 @@ class WidthConverterUnity(Elaboratable):
         self.width_in = width_in
         self.width_out = width_out
         self.domain = domain
-        self.input = AxiStream(self.width_in, 'sink', name='INPUT')
-        self.output = AxiStream(self.width_out, 'source', name='OUTPUT')
+        self.input = DataStream(self.width_in, 'sink', name='INPUT')
+        self.output = DataStream(self.width_out, 'source', name='OUTPUT')
     def elaborate(self, platform):
         m = Module()
         sync = m.d[self.domain]
@@ -110,10 +110,10 @@ class WidthConverterUnity(Elaboratable):
         dummy = Signal()
         sync += dummy.eq(~dummy)
         #comb += self.output.connect(self.input) # does not work
-        comb += self.output.TDATA.eq(self.input.TDATA)
-        comb += self.output.TVALID.eq(self.input.TVALID)
-        comb += self.output.TLAST.eq(self.input.TLAST)
-        comb += self.input.TREADY.eq(self.output.TREADY)
+        comb += self.output.data.eq(self.input.data)
+        comb += self.output.valid.eq(self.input.valid)
+        comb += self.output.last.eq(self.input.last)
+        comb += self.input.ready.eq(self.output.ready)
         return m
 
 
